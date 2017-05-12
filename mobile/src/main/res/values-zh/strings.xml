@@ -16,7 +16,7 @@
     <string name="single_lua">残局文件</string>
     <string name="font_files">字体文件</string>
     <string name="game_skins">皮肤文件</string>
-    <string name="coping_pendulum_image">复制摇摆数字图片</string>
+    <string name="coping_pendulum_image">复制灵摆数字图片</string>
     <string name="dialog_select_font">请选择一个字体文件</string>
     <string name="dialog_select_image">请选择一张图片</string>
     <string name="dialog_select_database">请选择一个数据库文件</string>

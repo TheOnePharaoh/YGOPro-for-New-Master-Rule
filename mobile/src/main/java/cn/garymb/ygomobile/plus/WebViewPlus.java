@@ -94,9 +94,7 @@ public class WebViewPlus extends WebView {
 
     public static class DefWebViewClient extends WebViewClient {
         @Override
-        public boolean shouldOverrideUrlLoading(WebView view, String url) {
-            return false;
-        }
+        public boolean shouldOverrideUrlLoading(WebView view, String url) {return true;}
     }
     public static class DefWebChromeClient extends WebChromeClient {
 
