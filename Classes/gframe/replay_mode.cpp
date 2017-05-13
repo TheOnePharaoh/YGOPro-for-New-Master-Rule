@@ -60,24 +60,17 @@ int ReplayMode::ReplayThread(void* param) {
 	mtrandom rnd;
 	int seed = rh.seed;
 	rnd.reset(seed);
-	unsigned char buffer[40];
 	if(rh.flag & REPLAY_TAG) {
-		cur_replay.ReadData(buffer, 40);
-		BufferIO::CopyWStr((unsigned short*)&buffer[0], mainGame->dInfo.hostname, 20);
-		cur_replay.ReadData(buffer, 40);
-		BufferIO::CopyWStr((unsigned short*)&buffer[0], mainGame->dInfo.hostname_tag, 20);
-		cur_replay.ReadData(buffer, 40);
-		BufferIO::CopyWStr((unsigned short*)&buffer[0], mainGame->dInfo.clientname_tag, 20);
-		cur_replay.ReadData(buffer, 40);
-		BufferIO::CopyWStr((unsigned short*)&buffer[0], mainGame->dInfo.clientname, 20);
+		cur_replay.ReadData(mainGame->dInfo.hostname, 40);
+		cur_replay.ReadData(mainGame->dInfo.hostname_tag, 40);
+		cur_replay.ReadData(mainGame->dInfo.clientname_tag, 40);
+		cur_replay.ReadData(mainGame->dInfo.clientname, 40);
 		mainGame->dInfo.isTag = true;
 		mainGame->dInfo.tag_player[0] = false;
 		mainGame->dInfo.tag_player[1] = false;
 	} else {
-		cur_replay.ReadData(buffer, 40);
-		BufferIO::CopyWStr((unsigned short*)&buffer[0], mainGame->dInfo.hostname, 20);
-		cur_replay.ReadData(buffer, 40);
-		BufferIO::CopyWStr((unsigned short*)&buffer[0], mainGame->dInfo.clientname, 20);
+		cur_replay.ReadData(mainGame->dInfo.hostname, 40);
+		cur_replay.ReadData(mainGame->dInfo.clientname, 40);
 	}
 #ifdef _IRR_ANDROID_PLATFORM_
 	set_script_reader(irr::android::android_script_reader);
@@ -89,6 +82,8 @@ int ReplayMode::ReplayThread(void* param) {
 	int start_hand = cur_replay.ReadInt32();
 	int draw_count = cur_replay.ReadInt32();
 	int opt = cur_replay.ReadInt32();
+	int duel_rule = opt >> 16;
+	mainGame->dInfo.duel_rule = duel_rule - 1;
 	set_player_info(pduel, 0, start_lp, start_hand, draw_count);
 	set_player_info(pduel, 1, start_lp, start_hand, draw_count);
 	mainGame->dInfo.lp[0] = start_lp;
@@ -175,7 +170,6 @@ int ReplayMode::ReplayThread(void* param) {
 	}
 	end_duel(pduel);
 	if(!is_closing) {
-		mainGame->soundEffectPlayer->doMenuBGM();
 		mainGame->actionSignal.Reset();
 		mainGame->gMutex.Lock();
 		mainGame->stMessage->setText(dataManager.GetSysString(1501));
@@ -753,6 +747,15 @@ bool ReplayMode::ReplayAnalyze(char* msg, unsigned int len) {
 			DuelClient::ClientAnalyze(offset, pbuf - offset);
 			break;
 		}
+		case MSG_ROCK_PAPER_SCISSORS: {
+			player = BufferIO::ReadInt8(pbuf);
+			return ReadReplayResponse();
+		}
+		case MSG_HAND_RES: {
+			pbuf += 1;
+			DuelClient::ClientAnalyze(offset, pbuf - offset);
+			break;
+		}
 		case MSG_ANNOUNCE_RACE: {
 			player = BufferIO::ReadInt8(pbuf);
 			pbuf += 5;
@@ -821,7 +824,7 @@ bool ReplayMode::ReplayAnalyze(char* msg, unsigned int len) {
 	return true;
 }
 void ReplayMode::ReplayRefresh(int flag) {
-	unsigned char queryBuffer[0x2000];
+	unsigned char queryBuffer[0x4000];
 	/*int len = */query_field_card(pduel, 0, LOCATION_MZONE, flag, queryBuffer, 0);
 	mainGame->dField.UpdateFieldCard(mainGame->LocalPlayer(0), LOCATION_MZONE, (char*)queryBuffer);
 	/*len = */query_field_card(pduel, 1, LOCATION_MZONE, flag, queryBuffer, 0);
@@ -856,7 +859,7 @@ void ReplayMode::ReplayRefreshExtra(int player, int flag) {
 	mainGame->dField.UpdateFieldCard(mainGame->LocalPlayer(player), LOCATION_EXTRA, (char*)queryBuffer);
 }
 void ReplayMode::ReplayRefreshSingle(int player, int location, int sequence, int flag) {
-	unsigned char queryBuffer[0x2000];
+	unsigned char queryBuffer[0x4000];
 	/*int len = */query_card(pduel, player, location, sequence, flag, queryBuffer, 0);
 	mainGame->dField.UpdateCard(mainGame->LocalPlayer(player), location, sequence, (char*)queryBuffer);
 }
@@ -865,17 +868,7 @@ int ReplayMode::MessageHandler(long fduel, int type) {
 		return 0;
 	char msgbuf[1024];
 	get_log_message(fduel, (byte*)msgbuf);
-	if(enable_log == 1) {
-		wchar_t wbuf[1024];
-		BufferIO::DecodeUTF8(msgbuf, wbuf);
-		mainGame->AddChatMsg(wbuf, 9);
-	} else if(enable_log == 2) {
-		FILE* fp = fopen("error.log", "at");
-		if(!fp)
-			return 0;
-		fprintf(fp, "[Script error:] %s\n", msgbuf);
-		fclose(fp);
-	}
+	mainGame->AddDebugMsg(msgbuf);
 	return 0;
 }
 
